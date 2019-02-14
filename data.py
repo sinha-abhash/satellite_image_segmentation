@@ -44,10 +44,6 @@ class SegmentationData(Dataset):
         return im, segment_im
 
     def encode(self, seg_im):
-        # print(np.unique(seg_im, return_counts=True))
-        arr = np.zeros_like(seg_im, dtype=np.uint8)
-        arr[seg_im == 0] = 1
-        # print(np.unique(arr, return_counts=True))
         seg_im = np.array(seg_im)
         seg_im[seg_im == 0] = 1
         seg_im[seg_im == 255] = 0
@@ -55,16 +51,15 @@ class SegmentationData(Dataset):
         return seg_im
 
     def decode_segmap(self, encoded_im, plot=False):
-        label_colours = self.palette
-        reverse_label_colours = {v:k for k,v in label_colours.items()}
         inference = np.ones_like(encoded_im, dtype=np.uint8) * 255
 
+        # value 0 in encoded_im corresponds to first layer in the target which is foreground
+        # value 1 in encoded_im corresponds to second layer in the target which is background
         inference[encoded_im == 0] = 0
         encoded_im[encoded_im == 1] = 255
         encoded_im = encoded_im.astype(np.uint8)
 
         return encoded_im
-
 
     def one_hot_encoding(self, label):
         layer1 = np.zeros_like(label, dtype=np.uint8)
