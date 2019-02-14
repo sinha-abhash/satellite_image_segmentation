@@ -25,8 +25,20 @@ class SegmentationData(Dataset):
         segment_name = self.segment_names[idx]
 
         im = Image.open(im_name)
-        r,g,b,a = im.split()
-        im = np.stack((r,g,b), axis=0)
+        im = np.array(im)
+
+        # set background to 255 where the alpha value is 0.
+        im[im[:,:,3] == 0] = 255
+
+        # consider only three channels of the image, ignore alpha channel.
+        im = im[:,:,:3]
+
+        temp1 = im.astype(np.uint8)
+        temp = Image.fromarray(temp1)
+        temp.save('/home/abhash/Documents/pix4d/MLExpert/test1.png')
+
+        # channel first for satisfying pytorch requirements of image read.
+        im = np.rollaxis(im, 2, 0)
 
         segment_im = Image.open(segment_name)
         segment_im = segment_im.convert('L')
@@ -40,23 +52,26 @@ class SegmentationData(Dataset):
         return im, segment_im
 
     def encode(self, seg_im):
+        # print(np.unique(seg_im, return_counts=True))
         arr = np.zeros_like(seg_im, dtype=np.uint8)
-        for c, i in self.palette.items():
-            m = seg_im == np.array(c)
-            arr[m] = i
+        arr[seg_im == 0] = 1
+        # print(np.unique(arr, return_counts=True))
+        seg_im = np.array(seg_im)
+        seg_im[seg_im == 0] = 1
+        seg_im[seg_im == 255] = 0
 
-        return arr
+        return seg_im
 
-    def decode_segmap(self, temp, plot=False):
+    def decode_segmap(self, encoded_im, plot=False):
         label_colours = self.palette
         reverse_label_colours = {v:k for k,v in label_colours.items()}
-        inference = np.zeros_like(temp, dtype=np.uint8)
+        inference = np.ones_like(encoded_im, dtype=np.uint8) * 255
 
-        for l in range(0, self.n_classes):
-            m = temp == np.array(l)
-            inference[m] = reverse_label_colours[l]
+        inference[encoded_im == 0] = 0
+        encoded_im[encoded_im == 1] = 255
+        encoded_im = encoded_im.astype(np.uint8)
 
-        return inference
+        return encoded_im
 
 
     def one_hot_encoding(self, label):
@@ -65,8 +80,8 @@ class SegmentationData(Dataset):
 
         # pixel with value 0 will have layer1 with value 1 and layer 2 will have value 0
         # pixel with value 1 will have layer2 with value 1 and layer 1 will have value 0
-        layer1[label == np.array(0)] = 1
-        layer2[label == np.array(1)] = 1
+        layer1[label == np.array(1)] = 1
+        layer2[label == np.array(0)] = 1
 
         # stack both the layers
         result = np.stack((layer1, layer2), axis=0)    # size = 2 x W x H

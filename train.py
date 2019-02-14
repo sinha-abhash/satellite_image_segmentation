@@ -45,8 +45,6 @@ def main(args):
             print("epoch{} loss: {}".format(epoch, loss.data.item()))
 
             if epoch%5 == 0:
-                print(outputs.shape)
-
                 pred = np.squeeze(outputs.data.max(1)[1].cpu().numpy(), axis=0)
 
                 decoded = seg_dataset.decode_segmap(pred, False)
@@ -56,6 +54,9 @@ def main(args):
 
                 decoded.save(path)
 
+    model_name = os.path.join(args.model_path, 'fcn.pt')
+    torch.save(model, model_name)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Provide inputs for FCN models parameters")
@@ -64,12 +65,12 @@ if __name__ == "__main__":
     parser.add_argument('--seg_dir', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/seg_images',
                         help='provide number of classes a pixel can have')
     parser.add_argument('--n_classes', type=int, default=2, help='provide number of classes a pixel can have')
-    parser.add_argument('--n_epoch', type=int, default=10, help='provide number of epochs')
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--n_epoch', type=int, default=100, help='provide number of epochs')
+    parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--momentum', type=float, default=0.95)
     parser.add_argument('--weight_decay', type=float, default=5e-4)
-    parser.add_argument('--model_path', type=str, help='provide path for saved models')
+    parser.add_argument('--model_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/saved_model', help='provide path for saved models')
     parser.add_argument('--output_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/output/', help='provide path for saving output image')
     args = parser.parse_args()
     main(args)
