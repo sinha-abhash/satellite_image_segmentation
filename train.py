@@ -9,8 +9,17 @@ from data import SegmentationData
 
 import numpy as np
 from PIL import Image
+from matplotlib import pyplot as plt
 import os
 import argparse
+
+
+def plot(losses, args):
+    plt.plot(losses, label='loss')
+    plt.xlabel('loss')
+    plt.ylabel('epochs')
+    plt.legend()
+    plt.savefig(args.plot_path)
 
 
 def main(args):
@@ -27,7 +36,7 @@ def main(args):
 
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     criterion = nn.BCEWithLogitsLoss()
-
+    losses = []
     for epoch in range(args.n_epoch):
         for i, (image, segement_im) in enumerate(train_loader):
             image = image.float()
@@ -37,11 +46,13 @@ def main(args):
             optimizer.zero_grad()
 
             outputs = model(images)
-            #print(outputs[0,:,:1,:1])
 
             loss = criterion(outputs, labels.float())
             loss.backward()
             optimizer.step()
+
+            # add loss to a list for plotting it later
+            losses.append(loss)
             print("epoch{} loss: {}".format(epoch, loss.data.item()))
 
             if epoch%5 == 0:
@@ -54,6 +65,10 @@ def main(args):
 
                 decoded.save(path)
 
+    # plot loss
+    plot(losses, args)
+
+    # save model
     model_name = os.path.join(args.model_path, 'fcn.pt')
     torch.save(model, model_name)
 
@@ -65,12 +80,16 @@ if __name__ == "__main__":
     parser.add_argument('--seg_dir', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/seg_images',
                         help='provide number of classes a pixel can have')
     parser.add_argument('--n_classes', type=int, default=2, help='provide number of classes a pixel can have')
-    parser.add_argument('--n_epoch', type=int, default=100, help='provide number of epochs')
+    parser.add_argument('--n_epoch', type=int, default=10, help='provide number of epochs')
     parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--momentum', type=float, default=0.95)
     parser.add_argument('--weight_decay', type=float, default=5e-4)
-    parser.add_argument('--model_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/saved_model', help='provide path for saved models')
-    parser.add_argument('--output_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/output/', help='provide path for saving output image')
+    parser.add_argument('--model_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/saved_model',
+                        help='provide path for saved models')
+    parser.add_argument('--output_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/output/',
+                        help='provide path for saving output image')
+    parser.add_argument('--plot_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/plot/loss.png',
+                        help='provide path for saving output image')
     args = parser.parse_args()
     main(args)
