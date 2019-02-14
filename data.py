@@ -33,22 +33,14 @@ class SegmentationData(Dataset):
         # consider only three channels of the image, ignore alpha channel.
         im = im[:,:,:3]
 
-        temp1 = im.astype(np.uint8)
-        temp = Image.fromarray(temp1)
-        temp.save('/home/abhash/Documents/pix4d/MLExpert/test1.png')
-
         # channel first for satisfying pytorch requirements of image read.
         im = np.rollaxis(im, 2, 0)
 
         segment_im = Image.open(segment_name)
         segment_im = segment_im.convert('L')
-        segment_im = self.encode(segment_im)  # convert pixels with value 0 to 0 and 255 to 1
+        segment_im = self.encode(segment_im)  # convert pixels with value 0 to 1 and 255 to 0
         segment_im = self.one_hot_encoding(segment_im)
-        '''
-        im_np = im.astype(np.uint8)
-        im_pil = Image.fromarray(im_np)
-        im_pil.save('/home/abhash/Documents/pix4d/MLExpert/output/test1.png')
-        '''
+
         return im, segment_im
 
     def encode(self, seg_im):
