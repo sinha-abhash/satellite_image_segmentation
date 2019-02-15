@@ -4,15 +4,8 @@ import numpy as np
 import argparse
 import os
 
+from utils import decode_segmap
 
-def decode_segmap(encoded_im):
-    inference = np.ones_like(encoded_im, dtype=np.uint8) * 255
-
-    inference[encoded_im == 0] = 0
-    encoded_im[encoded_im == 1] = 255
-    encoded_im = encoded_im.astype(np.uint8)
-
-    return encoded_im
 
 def main(args):
     # read images
