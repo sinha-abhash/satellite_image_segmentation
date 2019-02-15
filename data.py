@@ -22,20 +22,19 @@ class SegmentationData(Dataset):
 
     def __getitem__(self, idx):
         im_name = self.image_names[idx]
-        segment_name = self.segment_names[idx]
-
         im = Image.open(im_name)
         im = np.array(im)
 
         # set background to 255 where the alpha value is 0.
-        im[im[:,:,3] == 0] = 255
+        im[im[:, :, 3] == 0] = 255
 
         # consider only three channels of the image, ignore alpha channel.
-        im = im[:,:,:3]
+        im = im[:, :, :3]
 
         # channel first for satisfying pytorch requirements of image read.
         im = np.rollaxis(im, 2, 0)
 
+        segment_name = self.segment_names[idx]
         segment_im = Image.open(segment_name)
         segment_im = segment_im.convert('L')
         segment_im = self.encode(segment_im)  # convert pixels with value 0 to 1 and 255 to 0
@@ -49,17 +48,6 @@ class SegmentationData(Dataset):
         seg_im[seg_im == 255] = 0
 
         return seg_im
-
-    def decode_segmap(self, encoded_im, plot=False):
-        inference = np.ones_like(encoded_im, dtype=np.uint8) * 255
-
-        # value 0 in encoded_im corresponds to first layer in the target which is foreground
-        # value 1 in encoded_im corresponds to second layer in the target which is background
-        inference[encoded_im == 0] = 0
-        encoded_im[encoded_im == 1] = 255
-        encoded_im = encoded_im.astype(np.uint8)
-
-        return encoded_im
 
     def one_hot_encoding(self, label):
         layer1 = np.zeros_like(label, dtype=np.uint8)

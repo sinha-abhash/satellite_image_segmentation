@@ -6,26 +6,61 @@ from torch.autograd import Variable
 
 from fcn import FCN
 from data import SegmentationData
+from utils import multiple_crop, decode_segmap
 
 import numpy as np
 from PIL import Image
 from matplotlib import pyplot as plt
 import os
 import argparse
+from tqdm import tqdm
 
 
 def plot(losses, args):
     plt.plot(losses, label='loss')
-    plt.xlabel('loss')
-    plt.ylabel('epochs')
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
     plt.legend()
     plt.savefig(args.plot_path)
 
 
+def crop_and_save(args, cropped_input_images_path, cropped_gt_images_path):
+    image_names = [f for f in os.listdir(args.im_dir)]
+    segment_names = [f for f in os.listdir(args.seg_dir)]
+    assert len(image_names) == len(segment_names), "number of images in image folder is not equal to " \
+                                                             "number of segment images: %d:%d" % (len(image_names),
+                                                                                                  len(segment_names))
+
+    if not os.path.exists(cropped_input_images_path):
+        os.makedirs(cropped_input_images_path)
+
+    if not os.path.exists(cropped_gt_images_path):
+        os.makedirs(cropped_gt_images_path)
+
+    for im_name in tqdm(image_names):
+        cropped_input_images = multiple_crop(os.path.join(args.im_dir, im_name))
+        cropped_gt_images = multiple_crop(os.path.join(args.seg_dir, im_name))
+
+        for idx, (input_im, gt_im) in tqdm(enumerate(zip(cropped_input_images, cropped_gt_images))):
+            fname = im_name + '_' + str(idx) + '.png'
+            input_image_fname = os.path.join(cropped_input_images_path, fname)
+            gt_image_fname = os.path.join(cropped_gt_images_path, fname)
+            input_im.save(input_image_fname)
+            gt_im.save(gt_image_fname)
+
+
 def main(args):
     torch.manual_seed(1)
-    seg_dataset = SegmentationData(args.im_dir, args.seg_dir, args.n_classes)
-    train_loader = DataLoader(seg_dataset)
+
+    # crop input image and ground truth and save on disk
+    cropped_input_images_path = os.path.join(args.save_cropped, 'input_images')
+    cropped_gt_images_path = os.path.join(args.save_cropped, 'gt_images')
+
+    if args.crop_images:
+        crop_and_save(args, cropped_input_images_path, cropped_gt_images_path)
+
+    seg_dataset = SegmentationData(cropped_input_images_path, cropped_gt_images_path, args.n_classes)
+    train_loader = DataLoader(seg_dataset, shuffle=True, num_workers=4)
 
     model = FCN(args.n_classes)
     use_gpu = torch.cuda.is_available()
@@ -52,16 +87,17 @@ def main(args):
             optimizer.step()
 
             # add loss to a list for plotting it later
-            losses.append(loss)
-            print("epoch{} loss: {}".format(epoch, loss.data.item()))
+            if i == 0:
+                losses.append(loss)
+            print("epoch{} iteration {} loss: {}".format(epoch, i, loss.data.item()))
 
             if epoch%5 == 0:
                 pred = np.squeeze(outputs.data.max(1)[1].cpu().numpy(), axis=0)
 
-                decoded = seg_dataset.decode_segmap(pred, False)
+                decoded = decode_segmap(pred)
                 decoded = Image.fromarray(decoded)
 
-                path = os.path.join(args.output_path, 'output_%s.png' % (epoch))
+                path = os.path.join(args.output_path, 'output_%d_%d.png' % (epoch, i))
 
                 decoded.save(path)
 
@@ -79,12 +115,16 @@ if __name__ == "__main__":
                         help='provide path of image files')
     parser.add_argument('--seg_dir', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/seg_images',
                         help='provide number of classes a pixel can have')
+    parser.add_argument('--save_cropped', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/cropped',
+                        help='provide path for saving cropped images and ground truth')
     parser.add_argument('--n_classes', type=int, default=2, help='provide number of classes a pixel can have')
     parser.add_argument('--n_epoch', type=int, default=10, help='provide number of epochs')
     parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--momentum', type=float, default=0.95)
     parser.add_argument('--weight_decay', type=float, default=5e-4)
+    parser.add_argument('--crop_images', type=bool, default=False,
+                        help='True if images and ground truths needed to croped')
     parser.add_argument('--model_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/saved_model',
                         help='provide path for saved models')
     parser.add_argument('--output_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/output/',
