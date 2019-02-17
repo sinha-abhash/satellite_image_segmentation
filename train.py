@@ -6,7 +6,7 @@ from torch.autograd import Variable
 
 from fcn import FCN
 from data import SegmentationData
-from utils import multiple_crop, decode_segmap
+from utils import crop_and_save, decode_segmap
 
 import numpy as np
 from PIL import Image
@@ -22,31 +22,6 @@ def plot(losses, args):
     plt.ylabel('loss')
     plt.legend()
     plt.savefig(args.plot_path)
-
-
-def crop_and_save(args, cropped_input_images_path, cropped_gt_images_path):
-    image_names = [f for f in os.listdir(args.im_dir)]
-    segment_names = [f for f in os.listdir(args.seg_dir)]
-    assert len(image_names) == len(segment_names), "number of images in image folder is not equal to " \
-                                                             "number of segment images: %d:%d" % (len(image_names),
-                                                                                                  len(segment_names))
-
-    if not os.path.exists(cropped_input_images_path):
-        os.makedirs(cropped_input_images_path)
-
-    if not os.path.exists(cropped_gt_images_path):
-        os.makedirs(cropped_gt_images_path)
-
-    for im_name in tqdm(image_names):
-        cropped_input_images = multiple_crop(os.path.join(args.im_dir, im_name))
-        cropped_gt_images = multiple_crop(os.path.join(args.seg_dir, im_name))
-
-        for idx, (input_im, gt_im) in tqdm(enumerate(zip(cropped_input_images, cropped_gt_images))):
-            fname = im_name + '_' + str(idx) + '.png'
-            input_image_fname = os.path.join(cropped_input_images_path, fname)
-            gt_image_fname = os.path.join(cropped_gt_images_path, fname)
-            input_im.save(input_image_fname)
-            gt_im.save(gt_image_fname)
 
 
 def main(args):
@@ -118,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_cropped', type=str, default='/home/abhash/Documents/pix4d/MLExpert/images/cropped',
                         help='provide path for saving cropped images and ground truth')
     parser.add_argument('--n_classes', type=int, default=2, help='provide number of classes a pixel can have')
-    parser.add_argument('--n_epoch', type=int, default=10, help='provide number of epochs')
+    parser.add_argument('--n_epoch', type=int, default=50, help='provide number of epochs')
     parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--momentum', type=float, default=0.95)

@@ -1,5 +1,7 @@
 from PIL import Image
 import numpy as np
+import os
+from tqdm import tqdm
 
 
 def crop_x(y1, y2, image):
@@ -21,6 +23,7 @@ def crop_x(y1, y2, image):
         cropped_im_list.append(im)
 
     return cropped_im_list
+
 
 def multiple_crop(image_path):
     image = Image.open(image_path)
@@ -44,6 +47,32 @@ def multiple_crop(image_path):
         cropped_im_list.extend(cropped_x_list)
 
     return cropped_im_list
+
+
+def crop_and_save(args, cropped_input_images_path, cropped_gt_images_path):
+    image_names = [f for f in os.listdir(args.im_dir)]
+    segment_names = [f for f in os.listdir(args.seg_dir)]
+    assert len(image_names) == len(segment_names), "number of images in image folder is not equal to " \
+                                                             "number of segment images: %d:%d" % (len(image_names),
+                                                                                                  len(segment_names))
+
+    if not os.path.exists(cropped_input_images_path):
+        os.makedirs(cropped_input_images_path)
+
+    if not os.path.exists(cropped_gt_images_path):
+        os.makedirs(cropped_gt_images_path)
+
+    for im_name in tqdm(image_names):
+        cropped_input_images = multiple_crop(os.path.join(args.im_dir, im_name))
+        cropped_gt_images = multiple_crop(os.path.join(args.seg_dir, im_name))
+
+        for idx, (input_im, gt_im) in tqdm(enumerate(zip(cropped_input_images, cropped_gt_images))):
+            fname = im_name + '_' + str(idx) + '.png'
+            input_image_fname = os.path.join(cropped_input_images_path, fname)
+            gt_image_fname = os.path.join(cropped_gt_images_path, fname)
+            input_im.save(input_image_fname)
+            gt_im.save(gt_image_fname)
+
 
 def decode_segmap(encoded_im):
     # value 0 in encoded_im corresponds to first layer in the target which is foreground
