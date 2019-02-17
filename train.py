@@ -98,7 +98,7 @@ if __name__ == "__main__":
     parser.add_argument('--lr_decay', type=float, default=0.95)
     parser.add_argument('--momentum', type=float, default=0.95)
     parser.add_argument('--weight_decay', type=float, default=5e-4)
-    parser.add_argument('--crop_images', type=bool, default=True,
+    parser.add_argument('--crop_images', type=bool, default=False,
                         help='True if images and ground truths needed to croped')
     parser.add_argument('--model_path', type=str, default='/home/abhash/Documents/pix4d/MLExpert/saved_model',
                         help='provide path for saved models')
