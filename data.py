@@ -6,16 +6,18 @@ from torch.utils.data import Dataset
 
 
 class SegmentationData(Dataset):
-    def __init__(self, image_path, segment_path, n_classes):
+    def __init__(self, image_path, segment_path=None, n_classes=None, phase='train'):
         self.root_path = image_path
         self.segment_path = segment_path
         self.image_names = [os.path.join(image_path, f) for f in os.listdir(image_path)]
-        self.segment_names = [os.path.join(segment_path, f) for f in os.listdir(segment_path)]
-        assert len(self.image_names) == len(self.segment_names), "number of images in image folder is not equal to " \
-                                                                 "number of segment images: %d:%d" %(len(self.image_names),
-                                                                                                         len(self.segment_names))
+        if phase == 'train':
+            self.segment_names = [os.path.join(segment_path, f) for f in os.listdir(segment_path)]
+            assert len(self.image_names) == len(self.segment_names), "number of images in image folder is not equal to " \
+                                                                     "number of segment images: %d:%d" %(len(self.image_names),
+                                                                                                             len(self.segment_names))
         self.palette = {0:0, 255:1}
         self.n_classes = n_classes
+        self.phase = phase
 
     def __len__(self):
         return len(self.image_names)
@@ -34,13 +36,16 @@ class SegmentationData(Dataset):
         # channel first for satisfying pytorch requirements of image read.
         im = np.rollaxis(im, 2, 0)
 
-        segment_name = self.segment_names[idx]
-        segment_im = Image.open(segment_name)
-        segment_im = segment_im.convert('L')
-        segment_im = self.encode(segment_im)  # convert pixels with value 0 to 1 and 255 to 0
-        segment_im = self.one_hot_encoding(segment_im)
+        if self.phase == 'train':
+            segment_name = self.segment_names[idx]
+            segment_im = Image.open(segment_name)
+            segment_im = segment_im.convert('L')
+            segment_im = self.encode(segment_im)  # convert pixels with value 0 to 1 and 255 to 0
+            segment_im = self.one_hot_encoding(segment_im)
 
-        return im, segment_im
+            return im, segment_im
+        elif self.phase == 'test':
+            return im, im_name
 
     def encode(self, seg_im):
         seg_im = np.array(seg_im)
